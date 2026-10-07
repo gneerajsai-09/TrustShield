@@ -111,6 +111,46 @@ def store_hash_on_chain(hash_hex):
     return event["args"]["id"], w3.to_hex(tx_hash)
 
 
+def calculate_fraud_risk(
+    amount,
+    new_recipient=False,
+    reported_address=False,
+    unusual_time=False
+):
+    score = 10
+    reasons = []
+
+    if new_recipient:
+        score += 30
+        reasons.append("New recipient")
+
+    if reported_address:
+        score += 60
+        reasons.append("Recipient address has been reported by the community")
+
+    if amount >= 10000:
+        score += 25
+        reasons.append("Unusually large payment")
+
+    if unusual_time:
+        score += 10
+        reasons.append("Payment made at an unusual time")
+
+    score = min(score, 100)
+
+    if score >= 70:
+        decision = "BLOCK"
+    elif score >= 40:
+        decision = "REVIEW"
+    else:
+        decision = "LOW RISK"
+
+    return {
+        "risk_score": score,
+        "decision": decision,
+        "reasons": reasons,
+    }
+
 # ---------------------------------------------------------------- routes
 @app.get("/health")
 def health():
@@ -186,6 +226,30 @@ def handle_error(e):
     app.logger.exception(e)
     return jsonify(error=message), 500
 
+@app.route("/fraud/check", methods=["POST"])
+def fraud_check():
+    data = request.get_json(silent=True) or {}
+
+    try:
+        amount = float(data.get("amount", 0))
+    except (TypeError, ValueError):
+        return jsonify(error="Invalid payment amount"), 400
+
+    if amount <= 0:
+        return jsonify(error="Payment amount must be greater than zero"), 400
+
+    new_recipient = bool(data.get("new_recipient", False))
+    reported_address = bool(data.get("reported_address", False))
+    unusual_time = bool(data.get("unusual_time", False))
+
+    return jsonify(
+        calculate_fraud_risk(
+            amount=amount,
+            new_recipient=new_recipient,
+            reported_address=reported_address,
+            unusual_time=unusual_time
+        )
+    )
 
 if __name__ == "__main__":
     app.run(port=int(os.getenv("PORT", "5000")), debug=True)

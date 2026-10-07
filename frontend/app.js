@@ -1,230 +1,269 @@
-// INNOBLOCK 2.0 starter frontend. Settings (network, contract, backend) live in config.js.
+function $(id) {
+  return document.getElementById(id);
+}
 
-const NETWORK = NETWORKS[ACTIVE_NETWORK] || NETWORKS.sepolia;
-const CHAIN_ID_HEX = "0x" + NETWORK.chainId.toString(16);
+const TRUSTSHIELD_ABI = [
+  "function isReported(address) view returns (bool)"
+];
 
-// Read-only connection to the chain: works without a wallet, used for verification
-const readProvider = new ethers.JsonRpcProvider(NETWORK.rpcUrl, NETWORK.chainId, { staticNetwork: true });
-const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+const TRUSTSHIELD_WRITE_ABI = [
+  "function reportAddress(address)"
+];
 
-let signer = null; // set once the wallet is connected
-
-const $ = (id) => document.getElementById(id);
-
-/** Explorer link for a transaction. */
 function txUrl(hash) {
-  return `${NETWORK.explorer}/tx/${hash}`;
+  return `${NETWORKS[ACTIVE_NETWORK].explorer}/tx/${hash}`;
 }
 
-/** Show a status line (pending / confirmed / failed), with an explorer link when there is a transaction. */
-function setStatus(el, state, message, txHash) {
-  el.className = `status ${state}`;
-  el.textContent = message;
-  if (txHash) {
-    const link = document.createElement("a");
-    link.href = txUrl(txHash);
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.textContent = "View transaction ↗";
-    el.append(" ", link);
+function isNewRecipient(address) {
+  const key = "trustshield_recipients";
+  let list = JSON.parse(localStorage.getItem(key) || "[]");
+  const addr = address.toLowerCase();
+  const isNew = !list.includes(addr);
+
+  if (isNew) {
+    list.push(addr);
+    localStorage.setItem(key, JSON.stringify(list));
   }
+
+  return isNew;
 }
 
-/** Turn wallet and ethers errors into messages a user can act on. */
-function friendlyError(err) {
-  if (err?.code === "ACTION_REJECTED") return "You rejected the request in your wallet.";
-  if (err?.code === "INSUFFICIENT_FUNDS") return `Your wallet has no test ${NETWORK.currency}. Get some from a faucet.`;
-  if (err?.code === "CALL_EXCEPTION") return "The contract rejected this call. Check the contract address and network in config.js.";
-  if (err?.code === "BAD_DATA") return "No contract found at CONTRACT_ADDRESS on this network. Check config.js.";
-  if (err?.code === "NETWORK_ERROR") return "Network problem. Check your connection and try again.";
-  return err?.shortMessage || err?.message || String(err);
+function showSection(name) {
+  document.querySelectorAll(".app-section").forEach(s =>
+    s.classList.add("hidden")
+  );
+
+  const section = $(name);
+  if (section) section.classList.remove("hidden");
+
+  document.querySelectorAll(".app-nav button").forEach(btn => {
+    btn.classList.remove("active");
+    if (btn.getAttribute("onclick")?.includes(`'${name}'`)) {
+      btn.classList.add("active");
+    }
+  });
+
+  window.scrollTo(0, 0);
 }
 
-/** Call the backend and return its JSON, with a clear message if it can't be reached. */
-async function api(path, options = {}) {
-  let res;
+async function analyzePayment() {
+  const recipient = $("fraud-recipient").value.trim();
+  const amount = Number($("fraud-amount").value);
+  const result = $("fraud-result");
+
+  result.className = "ts-result";
+  result.textContent = "🔍 Checking AI risk signals + blockchain registry…";
+
   try {
-    res = await fetch(`${BACKEND_URL}${path}`, { headers: { "Content-Type": "application/json" }, ...options });
-  } catch {
-    throw new Error(`Can't reach the backend at ${BACKEND_URL}. Is it running? A sleeping free Render service takes about a minute to wake up.`);
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Backend error ${res.status}`);
-  return data;
-}
+    if (!window.ethereum)
+      throw new Error("Please open this page with MetaMask installed.");
 
-/** Ask the wallet to switch to our network, adding the network first if the wallet doesn't know it. */
-async function switchNetwork() {
-  try {
-    await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_ID_HEX }] });
-  } catch (err) {
-    const code = err.code ?? err.data?.originalError?.code;
-    if (code !== 4902) throw err; // 4902 = this network hasn't been added to the wallet yet
-    await window.ethereum.request({
-      method: "wallet_addEthereumChain",
-      params: [{
-        chainId: CHAIN_ID_HEX,
-        chainName: NETWORK.name,
-        rpcUrls: [NETWORK.rpcUrl],
-        blockExplorerUrls: [NETWORK.explorer],
-        nativeCurrency: { name: NETWORK.currency, symbol: NETWORK.currency, decimals: 18 },
-      }],
-    });
-  }
-}
+    if (!ethers.isAddress(recipient))
+      throw new Error("Please enter a valid recipient wallet address.");
 
-/** Step 1: connect the wallet, switch it to our network, show address and balance. */
-async function connectWallet() {
-  const el = $("connect-status");
-  if (!window.ethereum) {
-    setStatus(el, "failed", "No wallet found. Install MetaMask, or open this page inside the MetaMask mobile app.");
-    return;
-  }
-  try {
-    setStatus(el, "pending", "Approve the connection in your wallet…");
-    await window.ethereum.request({ method: "eth_requestAccounts" });
-    await switchNetwork();
+    if (!amount || amount <= 0)
+      throw new Error("Please enter a valid payment amount.");
+
     const provider = new ethers.BrowserProvider(window.ethereum);
-    signer = await provider.getSigner();
-    const address = await signer.getAddress();
-    const balance = await provider.getBalance(address);
-    $("wallet-address").textContent = address;
-    $("wallet-balance").textContent = `${Number(ethers.formatEther(balance)).toFixed(4)} ${NETWORK.currency}`;
-    $("connect-btn").textContent = "Connected";
-    setStatus(el, "confirmed", `Connected to ${NETWORK.name}.`);
-  } catch (err) {
-    setStatus(el, "failed", friendlyError(err));
+
+    const trustShield = new ethers.Contract(
+      TRUSTSHIELD_ADDRESS,
+      TRUSTSHIELD_ABI,
+      provider
+    );
+
+    const reported = await trustShield.isReported(recipient);
+    const newRecipient = isNewRecipient(recipient);
+
+    const hour = new Date().getHours();
+    const unusualTime = hour < 6 || hour >= 23;
+
+    const response = await fetch(`${BACKEND_URL}/fraud/check`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        amount,
+        new_recipient: newRecipient,
+        reported_address: reported,
+        unusual_time: unusualTime
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok)
+      throw new Error(data.error || "Fraud check failed");
+
+    data.blockchain_reported = reported;
+    showPaymentGate(data, recipient);
+    const payBtn = $("proceed-to-pay-btn");
+
+if (payBtn) {
+  if (data.decision === "LOW RISK" || data.decision === "REVIEW") {
+    payBtn.classList.remove("hidden");
+    payBtn.style.display = "block";
+  } else {
+    payBtn.classList.add("hidden");
+    payBtn.style.display = "none";
   }
 }
 
-/** Step 2: the USER signs. Hash the text in the browser and store the hash from their wallet. */
-async function storeFromWallet() {
-  const el = $("wallet-status");
-  const text = $("wallet-text").value.trim();
-  if (!text) return setStatus(el, "failed", "Type something first.");
-  if (!signer) return setStatus(el, "failed", "Connect your wallet first (step 1).");
+    const btn = $("proceed-anyway-btn");
+
+    if (btn) {
+      if (data.decision === "BLOCK") {
+        btn.classList.remove("hidden");
+        btn.style.display = "block";
+        btn.onclick = proceedAnyway;
+      } else {
+        btn.classList.add("hidden");
+        btn.style.display = "none";
+      }
+    }
+
+  } catch (error) {
+    result.className = "ts-result risk-block";
+    result.textContent = `Error: ${error.message}`;
+  }
+}
+
+function showPaymentGate(data, recipient) {
+  const result = $("fraud-result");
+
+  let cls = "risk-low";
+  let icon = "🟢";
+  let title = "Payment appears safe";
+
+  if (data.decision === "REVIEW") {
+    cls = "risk-review";
+    icon = "🟡";
+    title = "Payment requires review";
+  }
+
+  if (data.decision === "BLOCK") {
+    cls = "risk-block";
+    icon = "🔴";
+    title = "Payment blocked";
+  }
+
+  const reasons = data.reasons?.length
+    ? `<div class="fraud-reasons"><strong>Risk signals:</strong><ul>${
+        data.reasons.map(r => `<li>${r}</li>`).join("")
+      }</ul></div>`
+    : "";
+
+  result.className = `ts-result ${cls}`;
+
+  result.innerHTML = `
+    <div class="fraud-decision">
+      <div class="fraud-icon">${icon}</div>
+      <div>
+        <div class="fraud-title">${title}</div>
+        <div class="fraud-score">Risk Score:
+          <strong>${data.risk_score}/100</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="fraud-registry">
+      ${data.blockchain_reported
+        ? "🚨 Address is reported on-chain"
+        : "✓ Address is not reported in the blockchain registry"}
+    </div>
+
+    ${reasons}
+
+    <div class="payment-gate-status">
+      Recipient: <strong>${recipient}</strong>
+    </div>
+  `;
+}
+
+function proceedAnyway() {
+  if (confirm(
+    "⚠️ HIGH RISK PAYMENT\n\n" +
+    "TrustShield has blocked this payment because it appears risky.\n\n" +
+    "Are you sure you want to proceed?"
+  )) {
+    alert(
+      "⚠️ Risk override accepted.\n\n" +
+      "In the full payment flow, the transaction would now continue."
+    );
+  }
+}
+
+async function reportScamAddress() {
+  const recipient = $("fraud-recipient").value.trim();
+  const status = $("report-status");
+
   try {
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-    const hash = ethers.sha256(ethers.toUtf8Bytes(text));
-    setStatus(el, "pending", "Confirm the transaction in your wallet…");
-    const tx = await contract.store(hash);
-    setStatus(el, "pending", "Pending: waiting for the network to confirm…", tx.hash);
-    const receipt = await tx.wait(); // throws if the transaction fails
-    const event = receipt.logs
-      .map((log) => { try { return contract.interface.parseLog(log); } catch { return null; } })
-      .find((parsed) => parsed?.name === "RecordStored");
-    setStatus(el, "confirmed", `Confirmed: stored as record #${event ? event.args.id : "?"}. Check it in step 4 with the same text.`, tx.hash);
-  } catch (err) {
-    setStatus(el, "failed", `Failed: ${friendlyError(err)}`, err?.receipt?.hash);
+    if (!ethers.isAddress(recipient))
+      throw new Error("Enter a valid wallet address first.");
+
+    if (!window.ethereum)
+      throw new Error("Please connect MetaMask first.");
+
+    status.textContent = "🔐 Opening MetaMask…";
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const trustShield = new ethers.Contract(
+      TRUSTSHIELD_ADDRESS,
+      TRUSTSHIELD_WRITE_ABI,
+      signer
+    );
+
+    const tx = await trustShield.reportAddress(recipient);
+
+    status.innerHTML =
+      `⏳ Reporting address on-chain…<br>
+       <a href="${txUrl(tx.hash)}" target="_blank">
+       View transaction ↗</a>`;
+
+    await tx.wait();
+
+    status.innerHTML =
+      `✅ <strong>Address reported on-chain!</strong><br>
+       <a href="${txUrl(tx.hash)}" target="_blank">
+       View confirmed transaction on Sepolia ↗</a>`;
+
+    setTimeout(() => {
+      showSection("pay");
+      analyzePayment();
+    }, 500);
+
+  } catch (error) {
+    status.textContent =
+      `Error: ${error.reason || error.shortMessage || error.message}`;
   }
 }
 
-/** Step 3a: ask the backend's AI for a decision. */
-async function askAI() {
-  const el = $("ai-status");
-  const prompt = $("ai-prompt").value.trim();
-  if (!prompt) return setStatus(el, "failed", "Write a question for the AI first.");
-  setStatus(el, "pending", "Asking the AI…");
-  try {
-    const data = await api("/ai/decide", { method: "POST", body: JSON.stringify({ prompt }) });
-    $("ai-decision").value = data.decision;
-    setStatus(el, "confirmed", data.demo
-      ? "Demo answer. Set API_KEY in backend/.env to use a real model."
-      : "The AI answered. Review it, then store it on-chain.");
-  } catch (err) {
-    setStatus(el, "failed", err.message);
-  }
-}
-
-/** Step 3b: the BACKEND signs. It hashes the decision, stores the hash and saves the text. */
-async function storeDecision() {
-  const el = $("ai-status");
-  const text = $("ai-decision").value.trim();
-  if (!text) return setStatus(el, "failed", "Ask the AI first, or type a decision.");
-  setStatus(el, "pending", "Pending: the backend is signing and sending the transaction…");
-  try {
-    const record = await api("/records", { method: "POST", body: JSON.stringify({ text }) });
-    setStatus(el, "confirmed", `Confirmed: stored as record #${record.id}.`, record.txHash);
-    loadRecords();
-  } catch (err) {
-    setStatus(el, "failed", `Failed: ${err.message}`);
-  }
-}
-
-/** Step 4: re-hash the text in the browser and compare it with the hash stored on-chain. */
-async function verifyRecord(id, text, resultEl) {
-  resultEl.className = "result";
-  resultEl.textContent = "Checking…";
-  try {
-    const ok = await readContract.verify(id, ethers.sha256(ethers.toUtf8Bytes(text)));
-    resultEl.className = `result ${ok ? "ok" : "bad"}`;
-    resultEl.textContent = ok ? "✔ Verified on-chain" : "✘ Does not match the chain";
-  } catch (err) {
-    resultEl.className = "result bad";
-    resultEl.textContent = friendlyError(err);
-  }
-}
-
-/** One row in the records list: editable text, a Verify button, and the transaction link. */
-function renderRecord(record) {
-  const row = document.createElement("div");
-  row.className = "record";
-  const id = document.createElement("span");
-  id.className = "rid";
-  id.textContent = `#${record.id}`;
-  const input = document.createElement("input");
-  input.value = record.text;
-  const button = document.createElement("button");
-  button.className = "secondary";
-  button.textContent = "Verify";
-  const result = document.createElement("span");
-  result.className = "result";
-  const link = document.createElement("a");
-  link.href = txUrl(record.txHash);
-  link.target = "_blank";
-  link.rel = "noopener";
-  link.textContent = "tx ↗";
-  button.onclick = () => verifyRecord(record.id, input.value, result);
-  row.append(id, input, button, result, link);
-  return row;
-}
-
-/** Load the records the backend saved and list them. */
-async function loadRecords() {
-  const list = $("records");
-  list.textContent = "Loading…";
-  try {
-    const { records } = await api("/records");
-    list.textContent = records.length ? "" : "No records yet. Store an AI decision in step 3.";
-    records.forEach((record) => list.append(renderRecord(record)));
-  } catch (err) {
-    list.textContent = err.message;
-  }
-}
-
-/** Wire up the page and warn about anything left unconfigured in config.js. */
 function init() {
-  $("network-badge").textContent = NETWORK.name;
-  const problems = [];
-  if (!NETWORKS[ACTIVE_NETWORK]) problems.push(`ACTIVE_NETWORK "${ACTIVE_NETWORK}" is not in NETWORKS, so Sepolia is used.`);
-  if (/^0x0{40}$/.test(CONTRACT_ADDRESS)) problems.push("Set CONTRACT_ADDRESS in frontend/config.js to your deployed contract.");
-  if (problems.length) {
-    $("setup-warning").textContent = problems.join(" ");
-    $("setup-warning").classList.remove("hidden");
+  if ($("network-badge")) {
+    $("network-badge").textContent =
+      NETWORKS[ACTIVE_NETWORK].name;
   }
 
-  $("connect-btn").onclick = connectWallet;
-  $("wallet-store-btn").onclick = storeFromWallet;
-  $("ai-ask-btn").onclick = askAI;
-  $("ai-store-btn").onclick = storeDecision;
-  $("refresh-btn").onclick = loadRecords;
-  $("check-btn").onclick = () => verifyRecord(Number($("check-id").value), $("check-text").value, $("check-result"));
+  if ($("fraud-check-btn"))
+    $("fraud-check-btn").onclick = analyzePayment;
 
-  // Reload when the user switches account or network in the wallet, so nothing goes stale
-  window.ethereum?.on?.("chainChanged", () => location.reload());
-  window.ethereum?.on?.("accountsChanged", () => location.reload());
+  if ($("report-scam-btn"))
+    $("report-scam-btn").onclick = reportScamAddress;
 
-  loadRecords();
+  if (window.ethereum) {
+    window.ethereum.on("chainChanged", () => location.reload());
+    window.ethereum.on("accountsChanged", () => location.reload());
+  }
+
+  showSection("home");
 }
+function proceedToPay() {
 
+  alert(
+    "✅ Payment approved by TrustShield.\n\n" +
+    "In the full payment flow, you would now confirm the transaction."
+  );
+
+}
 init();

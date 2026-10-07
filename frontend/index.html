@@ -1,77 +1,701 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>INNOBLOCK 2.0 Starter dApp</title>
+
+  <title>TrustShield</title>
+
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
+  <!-- ================= NAVIGATION ================= -->
+
+  <nav class="app-nav">
+
+    <button
+      class="active"
+      onclick="showSection('home')">
+      🏠 Home
+    </button>
+
+    <button
+      onclick="showSection('pay')">
+      💳 Pay
+    </button>
+
+    <button
+      onclick="showSection('security')">
+      🛡️ Security
+    </button>
+
+    <button
+      onclick="showSection('settings')">
+      ⚙️ Settings
+    </button>
+
+  </nav>
+
+
+  <!-- ================= HEADER ================= -->
+
   <header>
+
     <div>
-      <h1>Proof Registry</h1>
-      <p class="sub">INNOBLOCK 2.0 starter: store a fingerprint of any text on-chain, then prove it was never changed.</p>
+      <h1>TrustShield</h1>
+
+      <p class="sub">
+        AI-Powered Fraud Detection For Peer-to-Peer Payments
+      </p>
     </div>
-    <span id="network-badge" class="badge"></span>
+
+    <span
+      id="network-badge"
+      class="badge">
+    </span>
+
   </header>
 
-  <div id="setup-warning" class="banner hidden"></div>
+
+  <div
+    id="setup-warning"
+    class="banner hidden">
+  </div>
+
+
+  <!-- ================= MAIN ================= -->
 
   <main>
-    <!-- 1. Wallet -->
-    <section class="card">
-      <h2><span class="step">1</span> Connect your wallet</h2>
-      <p class="hint">MetaMask (or any browser wallet) on the network shown above.</p>
-      <button id="connect-btn">Connect wallet</button>
-      <dl class="facts">
-        <dt>Address</dt><dd id="wallet-address">Not connected</dd>
-        <dt>Balance</dt><dd id="wallet-balance">-</dd>
-      </dl>
-      <div id="connect-status" class="status"></div>
-    </section>
 
-    <!-- 2. User signs -->
-    <section class="card">
-      <h2><span class="step">2</span> Store from your wallet</h2>
-      <p class="hint">You sign the transaction in MetaMask and pay the (test) gas.</p>
-      <textarea id="wallet-text" rows="3" placeholder="Type anything: a certificate, a vote, a land record..."></textarea>
-      <button id="wallet-store-btn">Store fingerprint on-chain</button>
-      <div id="wallet-status" class="status"></div>
-    </section>
 
-    <!-- 3. Backend signs -->
-    <section class="card">
-      <h2><span class="step">3</span> AI decision, recorded on-chain</h2>
-      <p class="hint">The backend asks an AI model, then signs with its own wallet. No API key? It returns a demo answer.</p>
-      <textarea id="ai-prompt" rows="2" placeholder="e.g. Should loan application #12 be approved? Income 40k, debt 5k."></textarea>
-      <button id="ai-ask-btn">Ask the AI</button>
-      <textarea id="ai-decision" rows="3" placeholder="The AI's decision appears here. You can edit it before storing."></textarea>
-      <button id="ai-store-btn">Store decision on-chain</button>
-      <div id="ai-status" class="status"></div>
-    </section>
+    <!-- ================================================= -->
+    <!-- HOME -->
+    <!-- ================================================= -->
 
-    <!-- 4. Verify -->
-    <section class="card wide">
-      <h2><span class="step">4</span> Records and verification</h2>
-      <p class="hint">Records saved by the backend. Edit any text and press Verify: one changed character and it fails.</p>
-      <button id="refresh-btn" class="secondary">Refresh records</button>
-      <div id="records"></div>
-      <h3>Check any record by id</h3>
-      <p class="hint">Works for records stored from a wallet in step 2 too: enter the id and the exact text.</p>
-      <div class="record">
-        <input id="check-id" class="rid-input" type="number" min="1" placeholder="id">
-        <input id="check-text" placeholder="Exact text that was stored">
-        <button id="check-btn" class="secondary">Verify</button>
-        <span id="check-result" class="result"></span>
+    <section
+      id="home"
+      class="trustshield-dashboard app-section">
+
+      <div class="ts-header">
+
+        <div>
+
+          <div class="ts-brand">
+            🛡️ TRUSTSHIELD
+          </div>
+
+          <h1>
+            AI-Powered Payment Protection
+          </h1>
+
+          <p>
+            Stop fraud before you press Send.
+          </p>
+
+        </div>
+
+        <div class="ts-network">
+
+          <span class="online-dot"></span>
+
+          Ethereum Sepolia
+
+        </div>
+
       </div>
+
+
+      <div class="home-grid">
+
+        <div class="home-feature">
+
+          <div class="feature-icon">
+            🤖
+          </div>
+
+          <h2>
+            AI Risk Detection
+          </h2>
+
+          <p>
+            Every payment is analyzed using behavioral
+            fraud signals before authorization.
+          </p>
+
+        </div>
+
+
+        <div class="home-feature">
+
+          <div class="feature-icon">
+            ⛓️
+          </div>
+
+          <h2>
+            Blockchain Verified
+          </h2>
+
+          <p>
+            Community scam reports are stored on
+            Ethereum Sepolia for public verification.
+          </p>
+
+        </div>
+
+
+        <div class="home-feature">
+
+          <div class="feature-icon">
+            🛡️
+          </div>
+
+          <h2>
+            Pre-Payment Protection
+          </h2>
+
+          <p>
+            TrustShield warns or blocks suspicious
+            payments before you press Send.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="home-cta">
+
+        <h2>
+          Protect your next payment
+        </h2>
+
+        <p>
+          Analyze the recipient before sending money.
+        </p>
+
+        <button
+          class="ts-primary-btn"
+          onclick="showSection('pay')">
+
+          💳 Check a Payment
+
+        </button>
+
+      </div>
+
+
+      <div class="ts-footer">
+
+        <span>
+          🔒 Protected by TrustShield
+        </span>
+
+        <span>
+          AI risk scoring + blockchain-verified fraud intelligence
+        </span>
+
+      </div>
+
     </section>
+
+
+    <!-- ================================================= -->
+    <!-- PAY -->
+    <!-- ================================================= -->
+
+    <section
+      id="pay"
+      class="trustshield-dashboard app-section hidden">
+
+      <div class="ts-header">
+
+        <div>
+
+          <div class="ts-brand">
+            💳 PAY
+          </div>
+
+          <h1>
+            Check Payment
+          </h1>
+
+          <p>
+            Analyze a payment before sending it.
+          </p>
+
+        </div>
+
+        <div class="ts-network">
+
+          <span class="online-dot"></span>
+
+          Ethereum Sepolia
+
+        </div>
+
+      </div>
+
+
+      <div class="ts-card ts-payment-card">
+
+        <div class="ts-card-title">
+
+          <span>
+            💳
+          </span>
+
+          <div>
+
+            <h2>
+              Payment Risk Analysis
+            </h2>
+
+            <p>
+              TrustShield checks AI signals and the
+              blockchain scam registry.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <label>
+          Recipient Wallet Address
+        </label>
+
+        <input
+          id="fraud-recipient"
+          type="text"
+          placeholder="0x..."
+          autocomplete="off"
+        >
+
+
+        <label>
+          Payment Amount
+        </label>
+
+        <div class="amount-input">
+
+          <span>
+            ₹
+          </span>
+
+          <input
+            id="fraud-amount"
+            type="number"
+            min="0"
+            placeholder="Enter amount"
+          >
+
+        </div>
+
+
+        <button
+          id="fraud-check-btn"
+          class="ts-primary-btn">
+
+          🔍 Analyze Payment
+
+        </button>
+
+
+        <div
+          id="fraud-result"
+          class="ts-result">
+        </div>
+
+
+     <button
+  id="proceed-to-pay-btn"
+  class="ts-primary-btn hidden"
+  onclick="proceedToPay()">
+
+  💳 Proceed to Pay
+
+</button>
+
+<button
+  id="proceed-anyway-btn"
+  class="hidden">
+
+  ⚠️ Proceed Anyway
+
+</button>
+
+
+        <!-- REPORT SCAM -->
+
+        <div class="report-box">
+
+          <h3>
+            🚨 Report a Scam Address
+          </h3>
+
+          <p>
+            Help protect the community by reporting
+            a suspicious wallet address on-chain.
+          </p>
+
+          <button
+            id="report-scam-btn"
+            class="ts-secondary-btn">
+
+            🚨 Report This Address
+
+          </button>
+
+          <div id="report-status"></div>
+
+        </div>
+
+      </div>
+
+
+      <div class="ts-footer">
+
+        <span>
+          🔒 TrustShield pre-payment protection
+        </span>
+
+        <span>
+          Risk analysis powered by AI + blockchain intelligence
+        </span>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- SECURITY -->
+    <!-- ================================================= -->
+
+    <section
+      id="security"
+      class="trustshield-dashboard app-section hidden">
+
+      <div class="ts-header">
+
+        <div>
+
+          <div class="ts-brand">
+            🛡️ SECURITY
+          </div>
+
+          <h1>
+            Blockchain Security
+          </h1>
+
+          <p>
+            Publicly verifiable scam protection.
+          </p>
+
+        </div>
+
+        <div class="ts-network">
+
+          <span class="online-dot"></span>
+
+          Ethereum Sepolia
+
+        </div>
+
+      </div>
+
+
+      <div class="ts-card">
+
+        <div class="ts-card-title">
+
+          <span>
+            🔐
+          </span>
+
+          <div>
+
+            <h2>
+              TrustShield Security
+            </h2>
+
+            <p>
+              Multiple layers of payment protection.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div class="security-item">
+
+          <span>
+            ⛓️
+          </span>
+
+          <div>
+
+            <strong>
+              Ethereum Sepolia
+            </strong>
+
+            <small>
+              Public blockchain testnet
+            </small>
+
+          </div>
+
+          <b class="verified">
+            ✓
+          </b>
+
+        </div>
+
+
+        <div class="security-item">
+
+          <span>
+            🛡️
+          </span>
+
+          <div>
+
+            <strong>
+              TrustShield Registry
+            </strong>
+
+            <small>
+              Community scam reports stored on-chain
+            </small>
+
+          </div>
+
+          <b class="verified">
+            ✓
+          </b>
+
+        </div>
+
+
+        <div class="security-item">
+
+          <span>
+            🤖
+          </span>
+
+          <div>
+
+            <strong>
+              AI Fraud Detection
+            </strong>
+
+            <small>
+              Behavioral risk analysis before authorization
+            </small>
+
+          </div>
+
+          <b class="verified">
+            ✓
+          </b>
+
+        </div>
+
+
+        <div class="security-item">
+
+          <span>
+            🔒
+          </span>
+
+          <div>
+
+            <strong>
+              Pre-Payment Protection
+            </strong>
+
+            <small>
+              Suspicious payments can be reviewed or blocked
+            </small>
+
+          </div>
+
+          <b class="verified">
+            ✓
+          </b>
+
+        </div>
+
+      </div>
+
+
+      <div class="ts-footer">
+
+        <span>
+          🛡️ TrustShield Security
+        </span>
+
+        <span>
+          Blockchain + AI fraud intelligence
+        </span>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- SETTINGS -->
+    <!-- ================================================= -->
+
+    <section
+      id="settings"
+      class="trustshield-dashboard app-section hidden">
+
+      <div class="ts-header">
+
+        <div>
+
+          <div class="ts-brand">
+            ⚙️ SETTINGS
+          </div>
+
+          <h1>
+            TrustShield Settings
+          </h1>
+
+          <p>
+            View your current application configuration.
+          </p>
+
+        </div>
+
+        <div class="ts-network">
+
+          <span class="online-dot"></span>
+
+          Ethereum Sepolia
+
+        </div>
+
+      </div>
+
+
+      <div class="ts-card">
+
+        <div class="ts-card-title">
+
+          <span>
+            ⚙️
+          </span>
+
+          <div>
+
+            <h2>
+              Network Configuration
+            </h2>
+
+            <p>
+              Current TrustShield deployment information.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div class="security-item">
+
+          <span>⛓️</span>
+
+          <div>
+
+            <strong>
+              Network
+            </strong>
+
+            <small>
+              Ethereum Sepolia
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <div class="security-item">
+
+          <span>🛡️</span>
+
+          <div>
+
+            <strong>
+              TrustShield Contract
+            </strong>
+
+            <small>
+              0xEF615A1c553c463fc386c661DCb56e7e61E4129F
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <div class="security-item">
+
+          <span>🤖</span>
+
+          <div>
+
+            <strong>
+              AI Risk Engine
+            </strong>
+
+            <small>
+              Connected to local fraud detection backend
+            </small>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="ts-footer">
+
+        <span>
+          ⚙️ TrustShield Configuration
+        </span>
+
+        <span>
+          Ethereum Sepolia test environment
+        </span>
+
+      </div>
+
+    </section>
+
   </main>
 
-  <footer>Built from the INNOBLOCK 2.0 starter · GCET Blockchain Club</footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+  <!-- ================================================= -->
+  <!-- JAVASCRIPT -->
+  <!-- ================================================= -->
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+
   <script src="config.js"></script>
+
   <script src="app.js"></script>
+
+
 </body>
+
 </html>
